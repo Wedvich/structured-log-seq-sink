@@ -30,3 +30,9 @@ To build the modules, ensure [Rollup](http://rollupjs.org/) is installed globall
 npm i rollup -g
 npm run build
 ```
+
+### Testing
+
+```
+npm run test
+```

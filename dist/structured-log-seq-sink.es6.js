@@ -27,9 +27,6 @@ var SeqSink = function () {
   }, {
     key: 'emit',
     value: function emit(events, done) {
-
-      console.log(this);
-
       var seqEvents = events.map(function (e) {
         return {
           'Level': e.level,
@@ -45,7 +42,7 @@ var SeqSink = function () {
 
       var apiKeyParameter = apiKey ? '?apiKey=' + apiKey : '';
 
-      fetch(url + '/api/events/raw' + apiKeyParameter, {
+      return fetch(url + '/api/events/raw' + apiKeyParameter, {
         headers: { 'content-type': 'application/json' },
         method: 'POST',
         body: body
