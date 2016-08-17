@@ -20,9 +20,6 @@ class SeqSink {
   }
 
   emit(events, done) {
-
-    console.log(this);
-
     const seqEvents = events.map(e => {
       return {
         'Level': e.level,
