@@ -2,7 +2,11 @@
 
 A structured-log plugin that writes log events to Seq.
 
-### Usage
+### Installing
+
+`npm i structured-log-seq-sink --save`
+
+### Using
 
 ```
 var seqSink = require('structured-log-seq-sink');
