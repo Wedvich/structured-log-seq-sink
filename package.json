@@ -7,7 +7,7 @@
   "scripts": {
     "build": "rollup -c rollup.config.js",
     "prepublish": "npm run build",
-    "test": "mocha "
+    "test": "mocha"
   },
   "repository": {
     "type": "git",
