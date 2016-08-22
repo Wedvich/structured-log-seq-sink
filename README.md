@@ -1,40 +1,44 @@
-# structured-log-seq-sink [![Build Status](https://travis-ci.org/Wedvich/structured-log-seq-sink.svg?branch=master)](https://travis-ci.org/Wedvich/structured-log-seq-sink) [![npm version](https://badge.fury.io/js/structured-log-seq-sink.svg)](https://www.npmjs.com/package/structured-log-seq-sink)
+# structured-log-seq-sink [![Build Status](https://travis-ci.org/Wedvich/structured-log-seq-sink.svg?branch=master)](https://travis-ci.org/Wedvich/structured-log-seq-sink)
 
-A [structured-log](https://github.com/structured-log/structured-log) plugin that writes log events to Seq.
+A [structured-log](https://github.com/structured-log/structured-log) plugin that writes log events to [Seq](https://getseq.net/).
 
 Uses [es6-promise](https://github.com/stefanpenner/es6-promise) and [isomorphic-fetch](https://github.com/matthew-andrews/isomorphic-fetch) to polyfill Promises and fetch, respectively.
 
-### Installing
-
-`npm i structured-log-seq-sink --save`
-
-### Using
+### Installation
 
 ```
+npm i structured-log-seq-sink --save
+```
+
+### Usage
+
+```js
 var structuredLog = require('structured-log');
 var seqSink = require('structured-log-seq-sink');
 
 var logger = structuredLog.configure()
-  .writeTo(seqSink({ /* options */ }))
+  .writeTo(seqSink({ /* ... options ...  */ }))
   .create();
 
 ```
 
 ##### Available options
 
-- `apiKey` API key to use
-- `url` (required) The URL to the Seq server
+|Parameter|Description|
+|---|---|
+|`apiKey`|(optional) API key to use|
+|`url`|(required) URL to the Seq server|
 
-### Building
+### Building and testing
 
-To build the modules, ensure [Rollup](http://rollupjs.org/) is installed globally, and run the `build` script:
+To build the modules yourself, ensure [Rollup](http://rollupjs.org/) is installed globally, and run the `build` script:
 
 ```
 npm i rollup -g
 npm run build
 ```
 
-### Testing
+Then, you can test the bundled module by running:
 
 ```
 npm test
