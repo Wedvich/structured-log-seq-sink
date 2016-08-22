@@ -1,4 +1,4 @@
-# structured-log-seq-sink [![Build Status](https://travis-ci.org/Wedvich/structured-log-seq-sink.svg?branch=master)](https://travis-ci.org/Wedvich/structured-log-seq-sink) [![npm version](https://badge.fury.io/js/structured-log-seq-sink.svg)](https://github.com/Wedvich/structured-log-seq-sink)
+# structured-log-seq-sink [![Build Status](https://travis-ci.org/Wedvich/structured-log-seq-sink.svg?branch=master)](https://travis-ci.org/Wedvich/structured-log-seq-sink) [![npm version](https://badge.fury.io/js/structured-log-seq-sink.svg)](https://www.npmjs.com/package/structured-log-seq-sink)
 
 A [structured-log](https://github.com/structured-log/structured-log) plugin that writes log events to Seq.
 
