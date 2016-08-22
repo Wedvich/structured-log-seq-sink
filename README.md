@@ -2,6 +2,8 @@
 
 A [structured-log](https://github.com/structured-log/structured-log) plugin that writes log events to Seq.
 
+Uses [es6-promise](https://github.com/stefanpenner/es6-promise) and [isomorphic-fetch](https://github.com/matthew-andrews/isomorphic-fetch) to polyfill Promises and fetch, respectively.
+
 ### Installing
 
 `npm i structured-log-seq-sink --save`
@@ -9,6 +11,7 @@ A [structured-log](https://github.com/structured-log/structured-log) plugin that
 ### Using
 
 ```
+var structuredLog = require('structured-log');
 var seqSink = require('structured-log-seq-sink');
 
 var logger = structuredLog.configure()
@@ -34,5 +37,5 @@ npm run build
 ### Testing
 
 ```
-npm run test
+npm test
 ```

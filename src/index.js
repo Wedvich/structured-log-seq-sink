@@ -1,25 +1,26 @@
 require('es6-promise').polyfill();
 require('isomorphic-fetch');
 
-let url;
-let apiKey;
-
 class SeqSink {
+
+  url = null;
+  apiKey = null;
+
   constructor(options) {
     if (!options)
       throw new Error(`'options' parameter is required.`);
     if (!options.url)
       throw new Error(`'options.url' parameter is required.`);
 
-    url = options.url;
-    apiKey = options.apiKey;
+    this.url = options.url.replace(/\/$/, '');
+    this.apiKey = options.apiKey;
   }
 
   toString() {
     return 'SeqSink';
   }
 
-  emit(events, done) {
+  emit = (events, done) => {
     const seqEvents = events.map(e => {
       return {
         'Level': e.level,
@@ -33,9 +34,9 @@ class SeqSink {
       'Events': seqEvents
     });
 
-    const apiKeyParameter = apiKey ? `?apiKey=${apiKey}` : '';
+    const apiKeyParameter = this.apiKey ? `?apiKey=${this.apiKey}` : '';
 
-    return fetch(`${url}/api/events/raw${apiKeyParameter}`, {
+    return fetch(`${this.url}/api/events/raw${apiKeyParameter}`, {
       headers: { 'content-type': 'application/json' },
       method: 'POST',
       body

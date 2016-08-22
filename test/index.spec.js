@@ -9,6 +9,25 @@ var sinon = require('sinon');
 var chai = require('chai');
 var assert = chai.assert;
 
+describe('class constructor', function () {
+  it('should throw if required options are missing', function () {
+    assert.throws(function () { seqSink(); });
+    assert.throws(function () { seqSink({}); });
+  });
+
+  it('should strip trailing slash from the provided URL', function () {
+    var sink = seqSink({ url: 'http://test/' });
+    assert.equal(sink.url, 'http://test');
+  });
+
+  it('should have instance parameters', function () {
+    var sink1 = seqSink({ url: 'http://test', apiKey: 'abc' });
+    var sink2 = seqSink({ url: 'http://test', apiKey: 'def' });
+    assert.equal('abc', sink1.apiKey);
+    assert.equal('def', sink2.apiKey);
+  });
+});
+
 describe('toString', function () {
   it('should return SeqSink', function () {
     var sink = seqSink({ url: 'http://mock' });

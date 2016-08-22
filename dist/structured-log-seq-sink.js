@@ -11,28 +11,16 @@ function _classCallCheck(instance, Constructor) { if (!(instance instanceof Cons
 require('es6-promise').polyfill();
 require('isomorphic-fetch');
 
-var url = void 0;
-var apiKey = void 0;
-
 var SeqSink = function () {
   function SeqSink(options) {
+    var _this = this;
+
     _classCallCheck(this, SeqSink);
 
-    if (!options) throw new Error('\'options\' parameter is required.');
-    if (!options.url) throw new Error('\'options.url\' parameter is required.');
+    this.url = null;
+    this.apiKey = null;
 
-    url = options.url;
-    apiKey = options.apiKey;
-  }
-
-  _createClass(SeqSink, [{
-    key: 'toString',
-    value: function toString() {
-      return 'SeqSink';
-    }
-  }, {
-    key: 'emit',
-    value: function emit(events, done) {
+    this.emit = function (events, done) {
       var seqEvents = events.map(function (e) {
         return {
           'Level': e.level,
@@ -46,15 +34,28 @@ var SeqSink = function () {
         'Events': seqEvents
       });
 
-      var apiKeyParameter = apiKey ? '?apiKey=' + apiKey : '';
+      var apiKeyParameter = _this.apiKey ? '?apiKey=' + _this.apiKey : '';
 
-      return fetch(url + '/api/events/raw' + apiKeyParameter, {
+      return fetch(_this.url + '/api/events/raw' + apiKeyParameter, {
         headers: { 'content-type': 'application/json' },
         method: 'POST',
         body: body
       }).then(function (response) {
         return done(response);
       });
+    };
+
+    if (!options) throw new Error('\'options\' parameter is required.');
+    if (!options.url) throw new Error('\'options.url\' parameter is required.');
+
+    this.url = options.url.replace(/\/$/, '');
+    this.apiKey = options.apiKey;
+  }
+
+  _createClass(SeqSink, [{
+    key: 'toString',
+    value: function toString() {
+      return 'SeqSink';
     }
   }]);
 
