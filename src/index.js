@@ -26,6 +26,9 @@ class SeqSink {
       const requests = {};
       for (let i = 0; i < localStorage.length; ++i) {
         const storageKey = localStorage.key(i);
+        if (storageKey.indexOf('structured-log-seq-sink') !== 0)
+          continue;
+
         const body = localStorage.getItem(storageKey);
         requests[storageKey] = postToSeq(() => {}, this.url, this.apiKey, body);
       }

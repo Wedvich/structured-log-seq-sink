@@ -63,6 +63,8 @@ var SeqSink = function () {
       var requests = {};
       for (var i = 0; i < localStorage.length; ++i) {
         var storageKey = localStorage.key(i);
+        if (storageKey.indexOf('structured-log-seq-sink') !== 0) continue;
+
         var body = localStorage.getItem(storageKey);
         requests[storageKey] = postToSeq(function () {}, this.url, this.apiKey, body);
       }
