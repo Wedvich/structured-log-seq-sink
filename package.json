@@ -1,6 +1,6 @@
 {
   "name": "structured-log-seq-sink",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "description": "A structured-log plugin that writes log events to Seq.",
   "main": "dist/structured-log-seq-sink.js",
   "jsnext:main": "dist/structured-log-seq-sink.es6.js",
@@ -28,9 +28,5 @@
     "rollup-plugin-babel": "^2.6.1",
     "sinon": "^1.17.5",
     "structured-log": "0.0.18"
-  },
-  "dependencies": {
-    "es6-promise": "^3.2.1",
-    "isomorphic-fetch": "^2.2.1"
   }
 }

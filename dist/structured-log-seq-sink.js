@@ -8,9 +8,6 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-require('es6-promise').polyfill();
-require('isomorphic-fetch');
-
 var SeqSink = function () {
   function SeqSink(options) {
     var _this = this;
@@ -19,6 +16,7 @@ var SeqSink = function () {
 
     this.url = null;
     this.apiKey = null;
+    this.durable = false;
 
     this.emit = function (events, done) {
       var seqEvents = events.map(function (e) {
@@ -34,15 +32,16 @@ var SeqSink = function () {
         'Events': seqEvents
       });
 
-      var apiKeyParameter = _this.apiKey ? '?apiKey=' + _this.apiKey : '';
+      var storageKey = void 0;
+      if (_this.durable) {
+        storageKey = 'structured-log-seq-sink-' + new Date().getTime() + '-' + (Math.floor(Math.random() * 1000000) + 1);
+        localStorage.setItem(storageKey, body);
+      }
 
-      return fetch(_this.url + '/api/events/raw' + apiKeyParameter, {
-        headers: { 'content-type': 'application/json' },
-        method: 'POST',
-        body: body
-      }).then(function (response) {
-        return done(response);
-      });
+      var promise = postToSeq(done, _this.url, _this.apiKey, body, storageKey);
+      return storageKey ? promise.then(function () {
+        return localStorage.removeItem(storageKey);
+      }) : promise;
     };
 
     if (!options) throw new Error('\'options\' parameter is required.');
@@ -50,6 +49,34 @@ var SeqSink = function () {
 
     this.url = options.url.replace(/\/$/, '');
     this.apiKey = options.apiKey;
+
+    if (options.durable && typeof localStorage === 'undefined') {
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn('\'options.durable\' parameter was set to true, but \'localStorage\' is not available.');
+      }
+      this.durable = false;
+    } else {
+      this.durable = !!options.durable;
+    }
+
+    if (this.durable) {
+      var requests = {};
+      for (var i = 0; i < localStorage.length; ++i) {
+        var storageKey = localStorage.key(i);
+        var body = localStorage.getItem(storageKey);
+        requests[storageKey] = postToSeq(function () {}, this.url, this.apiKey, body);
+      }
+
+      var _loop = function _loop(k) {
+        if (requests.hasOwnProperty(k)) requests[k].then(function () {
+          return localStorage.removeItem(k);
+        });
+      };
+
+      for (var k in requests) {
+        _loop(k);
+      }
+    }
   }
 
   _createClass(SeqSink, [{
@@ -61,6 +88,17 @@ var SeqSink = function () {
 
   return SeqSink;
 }();
+
+function postToSeq(done, url, apiKey, body, storageKey) {
+  var apiKeyParameter = apiKey ? '?apiKey=' + apiKey : '';
+  return fetch(url + '/api/events/raw' + apiKeyParameter, {
+    headers: { 'content-type': 'application/json' },
+    method: 'POST',
+    body: body
+  }).then(function (response) {
+    return done(response);
+  });
+}
 
 function SeqSinkFactory(options) {
   return new SeqSink(options);

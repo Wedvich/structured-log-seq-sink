@@ -2,7 +2,7 @@
 
 A [structured-log](https://github.com/structured-log/structured-log) plugin that writes log events to [Seq](https://getseq.net/).
 
-Uses [es6-promise](https://github.com/stefanpenner/es6-promise) and [isomorphic-fetch](https://github.com/matthew-andrews/isomorphic-fetch) to polyfill Promises and fetch, respectively.
+**Requires polyfills for `Promise` and `fetch` if those aren't supported in your target platform/browser.**
 
 ### Installation
 
@@ -27,6 +27,7 @@ var logger = structuredLog.configure()
 |Parameter|Description|
 |---|---|
 |`apiKey`|(optional) API key to use|
+|`durable`|(optional) If true, events will be buffered in local storage if available|
 |`url`|(required) URL to the Seq server|
 
 ### Building and testing
