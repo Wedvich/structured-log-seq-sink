@@ -1,6 +1,6 @@
 {
   "name": "structured-log-seq-sink",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "A structured-log plugin that writes log events to Seq.",
   "main": "dist/structured-log-seq-sink.js",
   "jsnext:main": "dist/structured-log-seq-sink.es6.js",
@@ -21,12 +21,16 @@
   "homepage": "https://github.com/Wedvich/structured-log-seq-sink#readme",
   "devDependencies": {
     "babel-plugin-transform-class-properties": "^6.11.5",
+    "babel-plugin-transform-object-rest-spread": "^6.20.2",
     "babel-preset-es2015": "^6.13.2",
     "chai": "^3.5.0",
     "fetch-mock": "^5.1.0",
     "mocha": "^3.0.2",
+    "rollup": "^0.38.0",
     "rollup-plugin-babel": "^2.6.1",
-    "sinon": "^1.17.5",
-    "structured-log": "0.0.18"
+    "sinon": "^1.17.5"
+  },
+  "peerDependencies": {
+    "structured-log": "^0.1.0 || ^0.0.18"
   }
 }

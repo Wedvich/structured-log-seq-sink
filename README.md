@@ -27,15 +27,16 @@ var logger = structuredLog.configure()
 |Parameter|Description|
 |---|---|
 |`apiKey`|(optional) API key to use|
+|`compact`|(optional) If true, events be serialized using [Serilog's compact format](https://github.com/serilog/serilog-formatting-compact)|
 |`durable`|(optional) If true, events will be buffered in local storage if available|
 |`url`|(required) URL to the Seq server|
 
 ### Building and testing
 
-To build the modules yourself, ensure [Rollup](http://rollupjs.org/) is installed globally, and run the `build` script:
+To build the modules yourself, check out the code, then install dependencies and run the `build` script:
 
 ```
-npm i rollup -g
+npm i
 npm run build
 ```
 

@@ -1,3 +1,5 @@
+var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+
 var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -11,9 +13,16 @@ var SeqSink = function () {
     this.url = null;
     this.apiKey = null;
     this.durable = false;
+    this.compact = false;
 
     this.emit = function (events, done) {
-      var seqEvents = events.map(function (e) {
+      var seqEvents = _this.compact ? events.reduce(function (s, e) {
+        return JSON.stringify(_extends({
+          '@l': mapLogLevel(e.level),
+          '@mt': e.messageTemplate.raw,
+          '@t': e.timestamp
+        }, e.properties)) + '\n';
+      }, '') : events.map(function (e) {
         return {
           'Level': e.level,
           'MessageTemplate': e.messageTemplate.raw,
@@ -22,7 +31,7 @@ var SeqSink = function () {
         };
       });
 
-      var body = JSON.stringify({
+      var body = _this.compact ? seqEvents : JSON.stringify({
         'Events': seqEvents
       });
 
@@ -32,7 +41,7 @@ var SeqSink = function () {
         localStorage.setItem(storageKey, body);
       }
 
-      var promise = postToSeq(done, _this.url, _this.apiKey, body, storageKey);
+      var promise = postToSeq(_this.url, _this.apiKey, _this.compact, body, storageKey, done);
       return storageKey ? promise.then(function () {
         return localStorage.removeItem(storageKey);
       }) : promise;
@@ -52,6 +61,8 @@ var SeqSink = function () {
     } else {
       this.durable = !!options.durable;
     }
+
+    this.compact = !!options.compact;
 
     if (this.durable) {
       var requests = {};
@@ -85,15 +96,45 @@ var SeqSink = function () {
   return SeqSink;
 }();
 
-function postToSeq(done, url, apiKey, body, storageKey) {
+function postToSeq(url, apiKey, compact, body, storageKey, done) {
   var apiKeyParameter = apiKey ? '?apiKey=' + apiKey : '';
-  return fetch(url + '/api/events/raw' + apiKeyParameter, {
-    headers: { 'content-type': 'application/json' },
+  var promise = fetch(url + '/api/events/raw' + apiKeyParameter, {
+    headers: {
+      'content-type': compact ? 'application/vnd.serilog.clef' : 'application/json'
+    },
     method: 'POST',
     body: body
-  }).then(function (response) {
+  });
+
+  return !done ? promise : promise.then(function (response) {
     return done(response);
   });
+}
+
+function mapLogLevel(logLevel) {
+  // If the log isn't numeric (structured-log < 0.1.0), just return it
+  if (isNaN(logLevel)) {
+    return logLevel;
+  }
+
+  // Parse numeric log level (structured-log >= 0.1.0)
+  switch (logLevel) {
+    case 0:
+      return 'Fatal';
+    case 1:
+      return 'Error';
+    case 2:
+      return 'Warning';
+    case 3:
+      return 'Information';
+    case 4:
+      return 'Debug';
+    case 5:
+      return 'Verbose';
+  }
+
+  // Default to Information.
+  return 'Information';
 }
 
 function SeqSinkFactory(options) {

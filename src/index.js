@@ -3,6 +3,7 @@ class SeqSink {
   url = null;
   apiKey = null;
   durable = false;
+  compact = false;
 
   constructor(options) {
     if (!options)
@@ -21,6 +22,8 @@ class SeqSink {
     } else {
       this.durable = !!options.durable;
     }
+
+    this.compact = !!options.compact;
 
     if (this.durable) {
       const requests = {};
@@ -44,7 +47,14 @@ class SeqSink {
   }
 
   emit = (events, done) => {
-    const seqEvents = events.map(e => {
+    const seqEvents = this.compact ? events.reduce((s, e) => {
+      return JSON.stringify({
+        '@l': mapLogLevel(e.level),
+        '@mt': e.messageTemplate.raw,
+        '@t': e.timestamp,
+        ...e.properties
+      }) + '\n';
+    }, ''): events.map(e => {
       return {
         'Level': e.level,
         'MessageTemplate': e.messageTemplate.raw,
@@ -53,7 +63,7 @@ class SeqSink {
       };
     });
 
-    const body = JSON.stringify({
+    const body = this.compact ? seqEvents : JSON.stringify({
       'Events': seqEvents
     });
 
@@ -63,21 +73,45 @@ class SeqSink {
       localStorage.setItem(storageKey, body);
     }
 
-    const promise = postToSeq(done, this.url, this.apiKey, body, storageKey);
+    const promise = postToSeq(this.url, this.apiKey, this.compact, body, storageKey, done);
     return storageKey
       ? promise.then(() => localStorage.removeItem(storageKey))
       : promise;
   }
 }
 
-function postToSeq(done, url, apiKey, body, storageKey) {
+function postToSeq(url, apiKey, compact, body, storageKey, done) {
   const apiKeyParameter = apiKey ? `?apiKey=${apiKey}` : '';
-  return fetch(`${url}/api/events/raw${apiKeyParameter}`, {
-    headers: { 'content-type': 'application/json' },
+  const promise = fetch(`${url}/api/events/raw${apiKeyParameter}`, {
+    headers: {
+      'content-type': compact ? 'application/vnd.serilog.clef' : 'application/json'
+    },
     method: 'POST',
     body
-  })
-    .then(response => done(response));
+  });
+
+  return !done ? promise : promise.then(response => done(response));
+}
+
+function mapLogLevel(logLevel) {
+
+  // If the log level isn't numeric (structured-log < 0.1.0), return it as-is.
+  if (isNaN(logLevel)) {
+    return logLevel;
+  }
+  
+  // Parse numeric log level (structured-log >= 0.1.0).
+  switch (logLevel) {
+    case 0: return 'Fatal';
+    case 1: return 'Error';
+    case 2: return 'Warning';
+    case 3: return 'Information';
+    case 4: return 'Debug';
+    case 5: return 'Verbose';
+  }
+
+  // Default to Information.
+  return 'Information';
 }
 
 export default function SeqSinkFactory(options) {
