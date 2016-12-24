@@ -24,7 +24,7 @@ var SeqSink = function () {
         }, e.properties)) + '\n';
       }, '').replace(/\s+$/g, '') : events.map(function (e) {
         return {
-          'Level': e.level,
+          'Level': mapLogLevel(e.level),
           'MessageTemplate': e.messageTemplate.raw,
           'Properties': e.properties,
           'Timestamp': e.timestamp

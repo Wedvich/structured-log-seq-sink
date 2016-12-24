@@ -1,6 +1,6 @@
 {
   "name": "structured-log-seq-sink",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "A structured-log plugin that writes log events to Seq.",
   "main": "dist/structured-log-seq-sink.js",
   "jsnext:main": "dist/structured-log-seq-sink.es6.js",

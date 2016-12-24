@@ -56,7 +56,7 @@ class SeqSink {
       }) + '\n';
     }, '').replace(/\s+$/g, '') : events.map(e => {
       return {
-        'Level': e.level,
+        'Level': mapLogLevel(e.level),
         'MessageTemplate': e.messageTemplate.raw,
         'Properties': e.properties,
         'Timestamp': e.timestamp
