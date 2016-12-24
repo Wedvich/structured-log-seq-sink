@@ -48,13 +48,13 @@ class SeqSink {
 
   emit = (events, done) => {
     const seqEvents = this.compact ? events.reduce((s, e) => {
-      return JSON.stringify({
+      return s + JSON.stringify({
         '@l': mapLogLevel(e.level),
         '@mt': e.messageTemplate.raw,
         '@t': e.timestamp,
         ...e.properties
       }) + '\n';
-    }, ''): events.map(e => {
+    }, '').replace(/\s+$/g, '') : events.map(e => {
       return {
         'Level': e.level,
         'MessageTemplate': e.messageTemplate.raw,
@@ -62,6 +62,7 @@ class SeqSink {
         'Timestamp': e.timestamp
       };
     });
+    
 
     const body = this.compact ? seqEvents : JSON.stringify({
       'Events': seqEvents

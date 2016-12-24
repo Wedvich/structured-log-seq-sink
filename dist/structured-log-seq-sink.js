@@ -23,12 +23,12 @@ var SeqSink = function () {
 
     this.emit = function (events, done) {
       var seqEvents = _this.compact ? events.reduce(function (s, e) {
-        return JSON.stringify(_extends({
+        return s + JSON.stringify(_extends({
           '@l': mapLogLevel(e.level),
           '@mt': e.messageTemplate.raw,
           '@t': e.timestamp
         }, e.properties)) + '\n';
-      }, '') : events.map(function (e) {
+      }, '').replace(/\s+$/g, '') : events.map(function (e) {
         return {
           'Level': e.level,
           'MessageTemplate': e.messageTemplate.raw,
@@ -118,12 +118,13 @@ function postToSeq(url, apiKey, compact, body, storageKey, done) {
 }
 
 function mapLogLevel(logLevel) {
-  // If the log isn't numeric (structured-log < 0.1.0), just return it
+
+  // If the log level isn't numeric (structured-log < 0.1.0), return it as-is.
   if (isNaN(logLevel)) {
     return logLevel;
   }
 
-  // Parse numeric log level (structured-log >= 0.1.0)
+  // Parse numeric log level (structured-log >= 0.1.0).
   switch (logLevel) {
     case 0:
       return 'Fatal';

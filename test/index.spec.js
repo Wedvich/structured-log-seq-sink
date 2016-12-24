@@ -1,4 +1,3 @@
-var structuredLog = require('structured-log');
 var seqSink = require('../dist/structured-log-seq-sink');
 
 var fetchMock = require('fetch-mock');
@@ -36,38 +35,64 @@ describe('toString', function () {
 });
 
 describe('emit', function () {
+  beforeEach(fetchMock.reset);
+
   it('should POST a well-formatted Seq event', function () {
-    var called = false;
     var sink = seqSink({ url: 'http://mock' });
-    var originalEmit = sink.emit;
-    var stubEmit = sinon.stub(sink, 'emit', function (events, done) {
-      originalEmit.apply(sink, arguments).then(function () {
-        called = true;
+
+    var events = [{
+      timestamp: new Date().toISOString(),
+      messageTemplate: { raw: 'Event example with a template parameter: {@sample}' },
+      level: 'Warning',
+      properties: { sample: { count: 5 } }
+    }];
+
+    var emitPromise = Promise.resolve();
+    return emitPromise
+      .then(sink.emit(events, emitPromise.resolve))
+      .then(function () {
+        var requestBody = JSON.parse(fetchMock.lastCall()[1].body);
+        assert.property(requestBody, 'Events');
+        var logEvent = requestBody.Events[0];
+        assert.propertyVal(logEvent, 'Level', 'Warning');
+        assert.propertyVal(logEvent, 'MessageTemplate', 'Event example with a template parameter: {@sample}');
+        assert.deepPropertyVal(logEvent, 'Properties.sample.count', 5);
+        assert.property(logEvent, 'Timestamp');
       });
-    });
+  });
 
-    var logger = structuredLog.configure()
-      .writeTo(sink)
-      .create();
+  it('should POST a well-formatted compact Seq event', function () {
+    var sink = seqSink({ url: 'http://mock', compact: true });
 
-    return new Promise(function (resolve) {
+    var events = [{
+      timestamp: new Date().toISOString(),
+      messageTemplate: { raw: 'Event example with a template parameter: {@sample}' },
+      level: 'Warning',
+      properties: { sample: { count: 5 } }
+    }, {
+      timestamp: new Date().toISOString(),
+      messageTemplate: { raw: 'Event example with a template parameter: {counter}' },
+      level: 'Debug',
+      properties: { counter: 21 }
+    }];
 
-      logger.warn('Event example with a template parameter: {@Sample}', { Count: 5 });
+    var emitPromise = Promise.resolve();
+    return emitPromise
+      .then(sink.emit(events, emitPromise.resolve))
+      .then(function () {
+        var logEvents = fetchMock.lastCall()[1].body.split('\n').map(JSON.parse);
 
-      var t = setTimeout(function cb() {
-        if (called) {
-          clearTimeout(t);
-          var requestBody = JSON.parse(fetchMock.lastCall()[1].body);
-          assert.isTrue(requestBody.hasOwnProperty('Events'));
-          var logEvent = requestBody.Events[0];
-          assert.equal(logEvent.Level, 'WARN');
-          assert.equal(logEvent.MessageTemplate, 'Event example with a template parameter: {@Sample}');
-          assert.deepEqual(logEvent.Properties, { Sample: { Count: 5 } });
-          assert.isTrue(logEvent.hasOwnProperty('Timestamp'));
-          resolve();
-        }
-        setTimeout(cb, 10);
-      }, 1);
-    });
+        var logEvent1 = logEvents[0];
+        assert.propertyVal(logEvent1, '@l', 'Warning');
+        assert.propertyVal(logEvent1, '@mt', 'Event example with a template parameter: {@sample}');
+        assert.deepPropertyVal(logEvent1, 'sample.count', 5);
+        assert.property(logEvent1, '@t');
+
+        var logEvent2 = logEvents[1];
+        assert.propertyVal(logEvent2, '@l', 'Debug');
+        assert.propertyVal(logEvent2, '@mt', 'Event example with a template parameter: {counter}');
+        assert.propertyVal(logEvent2, 'counter', 21);
+        assert.property(logEvent2, '@t');
+      });
   });
 });
