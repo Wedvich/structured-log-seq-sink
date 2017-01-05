@@ -71,7 +71,7 @@ var SeqSink = function () {
         if (storageKey.indexOf('structured-log-seq-sink') !== 0) continue;
 
         var body = localStorage.getItem(storageKey);
-        requests[storageKey] = postToSeq(function () {}, this.url, this.apiKey, body);
+        requests[storageKey] = postToSeq(this.url, this.apiKey, this.compact, body);
       }
 
       var _loop = function _loop(k) {
@@ -118,20 +118,17 @@ function mapLogLevel(logLevel) {
     return logLevel;
   }
 
-  // Parse numeric log level (structured-log >= 0.1.0).
-  switch (logLevel) {
-    case 0:
-      return 'Fatal';
-    case 1:
-      return 'Error';
-    case 2:
-      return 'Warning';
-    case 3:
-      return 'Information';
-    case 4:
-      return 'Debug';
-    case 5:
-      return 'Verbose';
+  // Parse bitfield log level (structured-log >= 0.1.0-alpha).
+  if (logLevel === 1) {
+    return 'Fatal';
+  } else if (logLevel === 3) {
+    return 'Error';
+  } else if (logLevel === 7) {
+    return 'Warning';
+  } else if (logLevel === 31) {
+    return 'Debug';
+  } else if (logLevel === 63) {
+    return 'Verbose';
   }
 
   // Default to Information.
