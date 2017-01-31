@@ -44,7 +44,8 @@ describe('emit', function () {
       timestamp: new Date().toISOString(),
       messageTemplate: { raw: 'Event example with a template parameter: {@sample}' },
       level: 'Warning',
-      properties: { sample: { count: 5 } }
+      properties: { sample: { count: 5 } },
+      error: new Error('Oops')
     }];
 
     var emitPromise = Promise.resolve();
@@ -58,6 +59,7 @@ describe('emit', function () {
         assert.propertyVal(logEvent, 'MessageTemplate', 'Event example with a template parameter: {@sample}');
         assert.deepPropertyVal(logEvent, 'Properties.sample.count', 5);
         assert.property(logEvent, 'Timestamp');
+        assert.property(logEvent, 'Exception');
       });
   });
 
@@ -68,7 +70,8 @@ describe('emit', function () {
       timestamp: new Date().toISOString(),
       messageTemplate: { raw: 'Event example with a template parameter: {@sample}' },
       level: 'Warning',
-      properties: { sample: { count: 5 } }
+      properties: { sample: { count: 5 } },
+      error: new Error('Oops')
     }, {
       timestamp: new Date().toISOString(),
       messageTemplate: { raw: 'Event example with a template parameter: {counter}' },
@@ -87,6 +90,7 @@ describe('emit', function () {
         assert.propertyVal(logEvent1, '@mt', 'Event example with a template parameter: {@sample}');
         assert.deepPropertyVal(logEvent1, 'sample.count', 5);
         assert.property(logEvent1, '@t');
+        assert.property(logEvent1, '@x');
 
         var logEvent2 = logEvents[1];
         assert.propertyVal(logEvent2, '@l', 'Debug');

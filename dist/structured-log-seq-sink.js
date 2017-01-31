@@ -10,98 +10,6 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-var SeqSink = function () {
-  function SeqSink(options) {
-    var _this = this;
-
-    _classCallCheck(this, SeqSink);
-
-    this.url = null;
-    this.apiKey = null;
-    this.durable = false;
-    this.compact = false;
-
-    this.emit = function (events, done) {
-      var seqEvents = _this.compact ? events.reduce(function (s, e) {
-        return s + JSON.stringify(_extends({
-          '@l': mapLogLevel(e.level),
-          '@mt': e.messageTemplate.raw,
-          '@t': e.timestamp
-        }, e.properties)) + '\n';
-      }, '').replace(/\s+$/g, '') : events.map(function (e) {
-        return {
-          'Level': mapLogLevel(e.level),
-          'MessageTemplate': e.messageTemplate.raw,
-          'Properties': e.properties,
-          'Timestamp': e.timestamp
-        };
-      });
-
-      var body = _this.compact ? seqEvents : JSON.stringify({
-        'Events': seqEvents
-      });
-
-      var storageKey = void 0;
-      if (_this.durable) {
-        storageKey = 'structured-log-seq-sink-' + new Date().getTime() + '-' + (Math.floor(Math.random() * 1000000) + 1);
-        localStorage.setItem(storageKey, body);
-      }
-
-      var promise = postToSeq(_this.url, _this.apiKey, _this.compact, body, storageKey, done);
-      return storageKey ? promise.then(function () {
-        return localStorage.removeItem(storageKey);
-      }) : promise;
-    };
-
-    if (!options) throw new Error('\'options\' parameter is required.');
-    if (!options.url) throw new Error('\'options.url\' parameter is required.');
-
-    this.url = options.url.replace(/\/$/, '');
-    this.apiKey = options.apiKey;
-
-    if (options.durable && typeof localStorage === 'undefined') {
-      if (typeof console !== 'undefined' && console.warn) {
-        console.warn('\'options.durable\' parameter was set to true, but \'localStorage\' is not available.');
-      }
-      this.durable = false;
-    } else {
-      this.durable = !!options.durable;
-    }
-
-    this.compact = !!options.compact;
-
-    if (this.durable) {
-      var requests = {};
-      for (var i = 0; i < localStorage.length; ++i) {
-        var storageKey = localStorage.key(i);
-        if (storageKey.indexOf('structured-log-seq-sink') !== 0) continue;
-
-        var body = localStorage.getItem(storageKey);
-        requests[storageKey] = postToSeq(this.url, this.apiKey, this.compact, body);
-      }
-
-      var _loop = function _loop(k) {
-        if (requests.hasOwnProperty(k)) requests[k].then(function () {
-          return localStorage.removeItem(k);
-        });
-      };
-
-      for (var k in requests) {
-        _loop(k);
-      }
-    }
-  }
-
-  _createClass(SeqSink, [{
-    key: 'toString',
-    value: function toString() {
-      return 'SeqSink';
-    }
-  }]);
-
-  return SeqSink;
-}();
-
 function postToSeq(url, apiKey, compact, body, storageKey, done) {
   var apiKeyParameter = apiKey ? '?apiKey=' + apiKey : '';
   var promise = fetch(url + '/api/events/raw' + apiKeyParameter, {
@@ -118,7 +26,6 @@ function postToSeq(url, apiKey, compact, body, storageKey, done) {
 }
 
 function mapLogLevel(logLevel) {
-
   // If the log level isn't numeric (structured-log < 0.1.0), return it as-is.
   if (isNaN(logLevel)) {
     return logLevel;
@@ -140,6 +47,114 @@ function mapLogLevel(logLevel) {
   // Default to Information.
   return 'Information';
 }
+
+var SeqSink = function () {
+  function SeqSink(options) {
+    var _this = this;
+
+    _classCallCheck(this, SeqSink);
+
+    this.url = null;
+    this.apiKey = null;
+    this.durable = false;
+    this.compact = false;
+
+    this.emit = function (events, done) {
+      var seqEvents = _this.compact ? events.reduce(function (s, e) {
+        var mappedEvent = _extends({
+          '@l': mapLogLevel(e.level),
+          '@mt': e.messageTemplate.raw,
+          '@t': e.timestamp
+        }, e.properties);
+        if (e.error instanceof Error && e.error.stack) {
+          mappedEvent['@x'] = e.error.stack;
+        }
+        return '' + s + JSON.stringify(mappedEvent) + '\n';
+      }, '').replace(/\s+$/g, '') : events.map(function (e) {
+        var mappedEvent = {
+          Level: mapLogLevel(e.level),
+          MessageTemplate: e.messageTemplate.raw,
+          Properties: e.properties,
+          Timestamp: e.timestamp
+        };
+        if (e.error instanceof Error && e.error.stack) {
+          mappedEvent.Exception = e.error.stack;
+        }
+        return mappedEvent;
+      });
+
+      var body = _this.compact ? seqEvents : JSON.stringify({
+        Events: seqEvents
+      });
+
+      var storageKey = void 0;
+      if (_this.durable) {
+        storageKey = 'structured-log-seq-sink-' + new Date().getTime() + '-' + (Math.floor(Math.random() * 1000000) + 1);
+        localStorage.setItem(storageKey, body);
+      }
+
+      var promise = postToSeq(_this.url, _this.apiKey, _this.compact, body, storageKey, done);
+      return storageKey ? promise.then(function () {
+        return localStorage.removeItem(storageKey);
+      }) : promise;
+    };
+
+    if (!options) {
+      throw new Error('\'options\' parameter is required.');
+    }
+    if (!options.url) {
+      throw new Error('\'options.url\' parameter is required.');
+    }
+
+    this.url = options.url.replace(/\/$/, '');
+    this.apiKey = options.apiKey;
+
+    if (options.durable && typeof localStorage === 'undefined') {
+      if (typeof console !== 'undefined' && console.warn) {
+        console.warn('\'options.durable\' parameter was set to true, but \'localStorage\' is not available.');
+      }
+      this.durable = false;
+    } else {
+      this.durable = !!options.durable;
+    }
+
+    this.compact = !!options.compact;
+
+    if (this.durable) {
+      var requests = {};
+      for (var i = 0; i < localStorage.length; ++i) {
+        var storageKey = localStorage.key(i);
+        if (storageKey.indexOf('structured-log-seq-sink') !== 0) {
+          continue;
+        }
+
+        var body = localStorage.getItem(storageKey);
+        requests[storageKey] = postToSeq(this.url, this.apiKey, this.compact, body);
+      }
+
+      var _loop = function _loop(k) {
+        if (requests.hasOwnProperty(k)) {
+          requests[k].then(function () {
+            return localStorage.removeItem(k);
+          });
+        }
+      };
+
+      for (var k in requests) {
+        _loop(k);
+      }
+    }
+  }
+
+  _createClass(SeqSink, [{
+    key: 'toString',
+    value: function toString() {
+      return 'SeqSink';
+    }
+  }]);
+
+  return SeqSink;
+}();
 
 function SeqSinkFactory(options) {
   return new SeqSink(options);
