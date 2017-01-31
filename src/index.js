@@ -185,6 +185,10 @@ class SeqSink {
       }
     }
   }
+
+  flush() {
+    return Promise.resolve();
+  }
 }
 
 export default function SeqSinkFactory(options) {

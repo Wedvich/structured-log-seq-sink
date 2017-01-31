@@ -219,6 +219,11 @@ var SeqSink = function () {
         }
       }
     }
+  }, {
+    key: 'flush',
+    value: function flush() {
+      return Promise.resolve();
+    }
   }]);
 
   return SeqSink;
