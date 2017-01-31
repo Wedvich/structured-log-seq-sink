@@ -29,8 +29,29 @@ var logger = structuredLog.configure()
 |`apiKey`|(optional) API key to use|
 |`compact`|(optional) If true, events be serialized using [Serilog's compact format](https://github.com/serilog/serilog-formatting-compact)|
 |`durable`|(optional) If true, events will be buffered in local storage if available|
-|`levelSwitch`|(optional) `DynamicLevelSwitch` which the Seq log level will use |
+|`levelSwitch`|(optional) `DynamicLevelSwitch` which the Seq log level will control and use |
 |`url`|(required) URL to the Seq server|
+
+#### Dynamic Level Control
+
+Much like [Serilog's Dynamic Level Control via Seq](http://docs.getseq.net/docs/using-serilog#dynamic-level-control), Seq can be used to dynamically
+control the log level of `structured-log`.  To configure, setup a `DynamicLevelSwitch` and pass it to the sink:
+
+```js
+var levelSwitch = new structuredLog.DynamicLevelSwitch("info")
+var log = structuredLog.configure()
+    .minLevel(levelSwitch)
+    .writeTo(SeqSink({
+        url: "http://localhost:5341",
+        apiKey: "API_KEY",
+        levelSwitch: levelSwitch
+    }))
+    .create();
+```
+
+This can be used as the log level across the entire pipeline (by using `.minLevel(levelSwitch)`, or just for the 
+seq sink (by passing it in the `options` array).
+
 
 ### Building and testing
 
