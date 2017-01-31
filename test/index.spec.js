@@ -1,8 +1,9 @@
 var seqSink = require('../dist/structured-log-seq-sink');
 
 var fetchMock = require('fetch-mock');
-fetchMock.mock('http://mock/api/events/raw', 200);
-fetchMock.post('http://mock-post/api/events/raw', 201);
+fetchMock.mock('http://mock/api/events/raw', { 
+  MinimumLevelAccepted: "Information"
+});
 
 var sinon = require('sinon');
 var chai = require('chai');
@@ -45,12 +46,13 @@ describe('emit', function () {
 
   it('should only POST events matching the log level', function() {
     var testSwitch = { 
-      isEnabled: sinon.stub()
+      isEnabled: sinon.stub(),
+      information: sinon.stub()
     };
     var sink = seqSink({ 
       url: 'http://mock',
       levelSwitch: testSwitch
-    })
+    });
 
     var events = [{
       timestamp: new Date().toISOString(),
@@ -68,9 +70,7 @@ describe('emit', function () {
       .returns(false)
       .withArgs(LEVEL_ERROR).returns(true);
 
-    var emitPromise = Promise.resolve();
-    return emitPromise
-      .then(sink.emit(events, emitPromise.resolve))
+    return sink.emit(events)
       .then(function () {
         var requestBody = JSON.parse(fetchMock.lastCall()[1].body);
         assert.property(requestBody, 'Events');
@@ -80,6 +80,32 @@ describe('emit', function () {
         assert.propertyVal(logEvent, 'Level', 'Error');
       });
   });
+
+  it("should update the log level", function() {
+    var testSwitch = { 
+      isEnabled: sinon.stub(),
+      information: sinon.stub()
+    };
+    var sink = seqSink({ 
+      url: 'http://mock',
+      levelSwitch: testSwitch
+    });
+
+    var events = [{
+      timestamp: new Date().toISOString(),
+      messageTemplate: { raw: 'Warning-Level message' },
+      level: LEVEL_WARNING,
+      properties: { }
+    }];
+
+    testSwitch.isEnabled
+      .returns(true);
+    
+    return sink.emit(events)
+      .then(function () {
+        assert.equal(testSwitch.information.callCount, 1);
+      });
+  })
 
   it('should POST a well-formatted Seq event', function () {
     var sink = seqSink({ url: 'http://mock' });
@@ -93,8 +119,7 @@ describe('emit', function () {
     }];
 
     var emitPromise = Promise.resolve();
-    return emitPromise
-      .then(sink.emit(events, emitPromise.resolve))
+    return sink.emit(events)
       .then(function () {
         var requestBody = JSON.parse(fetchMock.lastCall()[1].body);
         assert.property(requestBody, 'Events');
@@ -124,8 +149,7 @@ describe('emit', function () {
     }];
 
     var emitPromise = Promise.resolve();
-    return emitPromise
-      .then(sink.emit(events, emitPromise.resolve))
+    return sink.emit(events)
       .then(function () {
         var logEvents = fetchMock.lastCall()[1].body.split('\n').map(JSON.parse);
 

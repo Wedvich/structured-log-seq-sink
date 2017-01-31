@@ -89,9 +89,16 @@ class SeqSink {
   }
 
   emit = (events, done) => {
-    var filteredEvents = this.levelSwitch 
+    var filteredEvents = this.levelSwitch
       ? events.filter(e => this.levelSwitch.isEnabled(e.level))
       : events;
+
+    if (!filteredEvents.length) {
+      return done 
+        ? Promise.resolve().then(() => done(null))
+        : Promise.resolve();
+    }
+
     const seqEvents = this.compact ? filteredEvents.reduce((s, e) => {
       const mappedEvent = {
         '@l': mapLogLevel(e.level),
@@ -127,9 +134,39 @@ class SeqSink {
     }
 
     const promise = postToSeq(this.url, this.apiKey, this.compact, body, storageKey, done);
+
+    var responsePromise = promise
+      .then(r => r.json())
+      .then(json => this.updateLogLevel(json));
+
     return storageKey
-      ? promise.then(() => localStorage.removeItem(storageKey))
-      : promise;
+      ? responsePromise.then(() => localStorage.removeItem(storageKey))
+      : responsePromise;
+  }
+
+  updateLogLevel(response) {
+    if (this.levelSwitch && response && response.MinimumLevelAccepted) {
+      switch (response.MinimumLevelAccepted) {
+        case 'Fatal':
+          this.levelSwitch.fatal();
+          break;
+        case 'Error':
+          this.levelSwitch.error();
+          break;
+        case 'Warning':
+          this.levelSwitch.warning();
+          break;
+        case 'Information':
+          this.levelSwitch.information();
+          break;
+        case 'Debug':
+          this.levelSwitch.debug();
+          break;
+        case 'Verbose':
+          this.levelSwitch.verbose();
+          break;
+      }
+    }
   }
 }
 

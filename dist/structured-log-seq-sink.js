@@ -64,6 +64,13 @@ var SeqSink = function () {
       var filteredEvents = _this.levelSwitch ? events.filter(function (e) {
         return _this.levelSwitch.isEnabled(e.level);
       }) : events;
+
+      if (!filteredEvents.length) {
+        return done ? Promise.resolve().then(function () {
+          return done(null);
+        }) : Promise.resolve();
+      }
+
       var seqEvents = _this.compact ? filteredEvents.reduce(function (s, e) {
         var mappedEvent = _extends({
           '@l': mapLogLevel(e.level),
@@ -98,9 +105,16 @@ var SeqSink = function () {
       }
 
       var promise = postToSeq(_this.url, _this.apiKey, _this.compact, body, storageKey, done);
-      return storageKey ? promise.then(function () {
+
+      var responsePromise = promise.then(function (r) {
+        return r.json();
+      }).then(function (json) {
+        return _this.updateLogLevel(json);
+      });
+
+      return storageKey ? responsePromise.then(function () {
         return localStorage.removeItem(storageKey);
-      }) : promise;
+      }) : responsePromise;
     };
 
     if (!options) {
@@ -155,6 +169,32 @@ var SeqSink = function () {
     key: 'toString',
     value: function toString() {
       return 'SeqSink';
+    }
+  }, {
+    key: 'updateLogLevel',
+    value: function updateLogLevel(response) {
+      if (this.levelSwitch && response && response.MinimumLevelAccepted) {
+        switch (response.MinimumLevelAccepted) {
+          case 'Fatal':
+            this.levelSwitch.fatal();
+            break;
+          case 'Error':
+            this.levelSwitch.error();
+            break;
+          case 'Warning':
+            this.levelSwitch.warning();
+            break;
+          case 'Information':
+            this.levelSwitch.information();
+            break;
+          case 'Debug':
+            this.levelSwitch.debug();
+            break;
+          case 'Verbose':
+            this.levelSwitch.verbose();
+            break;
+        }
+      }
     }
   }]);
 
