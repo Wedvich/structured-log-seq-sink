@@ -40,6 +40,7 @@ class SeqSink {
   apiKey = null;
   durable = false;
   compact = false;
+  levelSwitch = null;
 
   constructor(options) {
     if (!options) {
@@ -51,6 +52,7 @@ class SeqSink {
 
     this.url = options.url.replace(/\/$/, '');
     this.apiKey = options.apiKey;
+    this.levelSwitch = options.levelSwitch || null;
 
     if (options.durable && typeof localStorage === 'undefined') {
       if (typeof console !== 'undefined' && console.warn) {
@@ -87,7 +89,10 @@ class SeqSink {
   }
 
   emit = (events, done) => {
-    const seqEvents = this.compact ? events.reduce((s, e) => {
+    var filteredEvents = this.levelSwitch 
+      ? events.filter(e => this.levelSwitch.isEnabled(e.level))
+      : events;
+    const seqEvents = this.compact ? filteredEvents.reduce((s, e) => {
       const mappedEvent = {
         '@l': mapLogLevel(e.level),
         '@mt': e.messageTemplate.raw,
@@ -98,7 +103,7 @@ class SeqSink {
         mappedEvent['@x'] = e.error.stack;
       }
       return `${s}${JSON.stringify(mappedEvent)}\n`;
-    }, '').replace(/\s+$/g, '') : events.map(e => {
+    }, '').replace(/\s+$/g, '') : filteredEvents.map(e => {
       const mappedEvent = {
         Level: mapLogLevel(e.level),
         MessageTemplate: e.messageTemplate.raw,

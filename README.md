@@ -29,6 +29,7 @@ var logger = structuredLog.configure()
 |`apiKey`|(optional) API key to use|
 |`compact`|(optional) If true, events be serialized using [Serilog's compact format](https://github.com/serilog/serilog-formatting-compact)|
 |`durable`|(optional) If true, events will be buffered in local storage if available|
+|`levelSwitch`|(optional) `DynamicLevelSwitch` which the Seq log level will use |
 |`url`|(required) URL to the Seq server|
 
 ### Building and testing

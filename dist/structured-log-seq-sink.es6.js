@@ -52,9 +52,13 @@ var SeqSink = function () {
     this.apiKey = null;
     this.durable = false;
     this.compact = false;
+    this.levelSwitch = null;
 
     this.emit = function (events, done) {
-      var seqEvents = _this.compact ? events.reduce(function (s, e) {
+      var filteredEvents = _this.levelSwitch ? events.filter(function (e) {
+        return _this.levelSwitch.isEnabled(e.level);
+      }) : events;
+      var seqEvents = _this.compact ? filteredEvents.reduce(function (s, e) {
         var mappedEvent = _extends({
           '@l': mapLogLevel(e.level),
           '@mt': e.messageTemplate.raw,
@@ -64,7 +68,7 @@ var SeqSink = function () {
           mappedEvent['@x'] = e.error.stack;
         }
         return '' + s + JSON.stringify(mappedEvent) + '\n';
-      }, '').replace(/\s+$/g, '') : events.map(function (e) {
+      }, '').replace(/\s+$/g, '') : filteredEvents.map(function (e) {
         var mappedEvent = {
           Level: mapLogLevel(e.level),
           MessageTemplate: e.messageTemplate.raw,
@@ -102,6 +106,7 @@ var SeqSink = function () {
 
     this.url = options.url.replace(/\/$/, '');
     this.apiKey = options.apiKey;
+    this.levelSwitch = options.levelSwitch || null;
 
     if (options.durable && typeof localStorage === 'undefined') {
       if (typeof console !== 'undefined' && console.warn) {
