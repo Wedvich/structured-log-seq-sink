@@ -41,6 +41,8 @@ class SeqSink {
   durable = false;
   compact = false;
   levelSwitch = null;
+  refreshLevelSwitchTimeoutId = null;
+  refreshLevelSwitchTimeoutInterval = 2*60*1000;
 
   constructor(options) {
     if (!options) {
@@ -82,13 +84,17 @@ class SeqSink {
         }
       }
     }
+
+    if (this.levelSwitch !== null) {
+      this.refreshLevelSwitchTimeoutId = setTimeout(() => this.sendToServer([]), this.refreshLevelSwitchTimeoutInterval);
+    }
   }
 
   toString() {
     return 'SeqSink';
   }
 
-  emit = (events, done) => {
+  emit(events, done) {
     var filteredEvents = this.levelSwitch
       ? events.filter(e => this.levelSwitch.isEnabled(e.level))
       : events;
@@ -99,7 +105,11 @@ class SeqSink {
         : Promise.resolve();
     }
 
-    const seqEvents = this.compact ? filteredEvents.reduce((s, e) => {
+    return this.sendToServer(filteredEvents, done);
+  }
+
+  sendToServer(events, done) {
+    const seqEvents = this.compact ? events.reduce((s, e) => {
       const mappedEvent = {
         '@l': mapLogLevel(e.level),
         '@mt': e.messageTemplate.raw,
@@ -110,7 +120,7 @@ class SeqSink {
         mappedEvent['@x'] = e.error.stack;
       }
       return `${s}${JSON.stringify(mappedEvent)}\n`;
-    }, '').replace(/\s+$/g, '') : filteredEvents.map(e => {
+    }, '').replace(/\s+$/g, '') : events.map(e => {
       const mappedEvent = {
         Level: mapLogLevel(e.level),
         MessageTemplate: e.messageTemplate.raw,
@@ -145,7 +155,14 @@ class SeqSink {
   }
 
   updateLogLevel(response) {
-    if (this.levelSwitch && response && response.MinimumLevelAccepted) {
+    if (!this.levelSwitch) return;
+
+    if (this.refreshLevelSwitchTimeoutId) {
+      clearTimeout(this.refreshLevelSwitchTimeoutId);
+      this.refreshLevelSwitchTimeoutId = setTimeout(() => this.sendToServer([]), this.refreshLevelSwitchTimeoutInterval);
+    }
+
+    if (response && response.MinimumLevelAccepted) {
       switch (response.MinimumLevelAccepted) {
         case 'Fatal':
           this.levelSwitch.fatal();
