@@ -52,46 +52,9 @@ var SeqSink = function () {
     this.apiKey = null;
     this.durable = false;
     this.compact = false;
-
-    this.emit = function (events, done) {
-      var seqEvents = _this.compact ? events.reduce(function (s, e) {
-        var mappedEvent = _extends({
-          '@l': mapLogLevel(e.level),
-          '@mt': e.messageTemplate.raw,
-          '@t': e.timestamp
-        }, e.properties);
-        if (e.error instanceof Error && e.error.stack) {
-          mappedEvent['@x'] = e.error.stack;
-        }
-        return '' + s + JSON.stringify(mappedEvent) + '\n';
-      }, '').replace(/\s+$/g, '') : events.map(function (e) {
-        var mappedEvent = {
-          Level: mapLogLevel(e.level),
-          MessageTemplate: e.messageTemplate.raw,
-          Properties: e.properties,
-          Timestamp: e.timestamp
-        };
-        if (e.error instanceof Error && e.error.stack) {
-          mappedEvent.Exception = e.error.stack;
-        }
-        return mappedEvent;
-      });
-
-      var body = _this.compact ? seqEvents : JSON.stringify({
-        Events: seqEvents
-      });
-
-      var storageKey = void 0;
-      if (_this.durable) {
-        storageKey = 'structured-log-seq-sink-' + new Date().getTime() + '-' + (Math.floor(Math.random() * 1000000) + 1);
-        localStorage.setItem(storageKey, body);
-      }
-
-      var promise = postToSeq(_this.url, _this.apiKey, _this.compact, body, storageKey, done);
-      return storageKey ? promise.then(function () {
-        return localStorage.removeItem(storageKey);
-      }) : promise;
-    };
+    this.levelSwitch = null;
+    this.refreshLevelSwitchTimeoutId = null;
+    this.refreshLevelSwitchTimeoutInterval = 2 * 60 * 1000;
 
     if (!options) {
       throw new Error('\'options\' parameter is required.');
@@ -102,6 +65,7 @@ var SeqSink = function () {
 
     this.url = options.url.replace(/\/$/, '');
     this.apiKey = options.apiKey;
+    this.levelSwitch = options.levelSwitch || null;
 
     if (options.durable && typeof localStorage === 'undefined') {
       if (typeof console !== 'undefined' && console.warn) {
@@ -138,12 +102,127 @@ var SeqSink = function () {
         _loop(k);
       }
     }
+
+    if (this.levelSwitch !== null) {
+      this.refreshLevelSwitchTimeoutId = setTimeout(function () {
+        return _this.sendToServer([]);
+      }, this.refreshLevelSwitchTimeoutInterval);
+    }
   }
 
   _createClass(SeqSink, [{
     key: 'toString',
     value: function toString() {
       return 'SeqSink';
+    }
+  }, {
+    key: 'emit',
+    value: function emit(events, done) {
+      var _this2 = this;
+
+      var filteredEvents = this.levelSwitch ? events.filter(function (e) {
+        return _this2.levelSwitch.isEnabled(e.level);
+      }) : events;
+
+      if (!filteredEvents.length) {
+        return done ? Promise.resolve().then(function () {
+          return done(null);
+        }) : Promise.resolve();
+      }
+
+      return this.sendToServer(filteredEvents, done);
+    }
+  }, {
+    key: 'sendToServer',
+    value: function sendToServer(events, done) {
+      var _this3 = this;
+
+      var seqEvents = this.compact ? events.reduce(function (s, e) {
+        var mappedEvent = _extends({
+          '@l': mapLogLevel(e.level),
+          '@mt': e.messageTemplate.raw,
+          '@t': e.timestamp
+        }, e.properties);
+        if (e.error instanceof Error && e.error.stack) {
+          mappedEvent['@x'] = e.error.stack;
+        }
+        return '' + s + JSON.stringify(mappedEvent) + '\n';
+      }, '').replace(/\s+$/g, '') : events.map(function (e) {
+        var mappedEvent = {
+          Level: mapLogLevel(e.level),
+          MessageTemplate: e.messageTemplate.raw,
+          Properties: e.properties,
+          Timestamp: e.timestamp
+        };
+        if (e.error instanceof Error && e.error.stack) {
+          mappedEvent.Exception = e.error.stack;
+        }
+        return mappedEvent;
+      });
+
+      var body = this.compact ? seqEvents : JSON.stringify({
+        Events: seqEvents
+      });
+
+      var storageKey = void 0;
+      if (this.durable) {
+        storageKey = 'structured-log-seq-sink-' + new Date().getTime() + '-' + (Math.floor(Math.random() * 1000000) + 1);
+        localStorage.setItem(storageKey, body);
+      }
+
+      var promise = postToSeq(this.url, this.apiKey, this.compact, body, storageKey, done);
+
+      var responsePromise = promise.then(function (r) {
+        return r.json();
+      }).then(function (json) {
+        return _this3.updateLogLevel(json);
+      });
+
+      return storageKey ? responsePromise.then(function () {
+        return localStorage.removeItem(storageKey);
+      }) : responsePromise;
+    }
+  }, {
+    key: 'updateLogLevel',
+    value: function updateLogLevel(response) {
+      var _this4 = this;
+
+      if (!this.levelSwitch) return;
+
+      if (this.refreshLevelSwitchTimeoutId) {
+        clearTimeout(this.refreshLevelSwitchTimeoutId);
+        this.refreshLevelSwitchTimeoutId = setTimeout(function () {
+          return _this4.sendToServer([]);
+        }, this.refreshLevelSwitchTimeoutInterval);
+      }
+
+      if (response && response.MinimumLevelAccepted) {
+        switch (response.MinimumLevelAccepted) {
+          case 'Fatal':
+            this.levelSwitch.fatal();
+            break;
+          case 'Error':
+            this.levelSwitch.error();
+            break;
+          case 'Warning':
+            this.levelSwitch.warning();
+            break;
+          case 'Information':
+            this.levelSwitch.information();
+            break;
+          case 'Debug':
+            this.levelSwitch.debug();
+            break;
+          case 'Verbose':
+            this.levelSwitch.verbose();
+            break;
+        }
+      }
+    }
+  }, {
+    key: 'flush',
+    value: function flush() {
+      return Promise.resolve();
     }
   }]);
 

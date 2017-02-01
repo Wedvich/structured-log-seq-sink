@@ -40,6 +40,9 @@ class SeqSink {
   apiKey = null;
   durable = false;
   compact = false;
+  levelSwitch = null;
+  refreshLevelSwitchTimeoutId = null;
+  refreshLevelSwitchTimeoutInterval = 2*60*1000;
 
   constructor(options) {
     if (!options) {
@@ -51,6 +54,7 @@ class SeqSink {
 
     this.url = options.url.replace(/\/$/, '');
     this.apiKey = options.apiKey;
+    this.levelSwitch = options.levelSwitch || null;
 
     if (options.durable && typeof localStorage === 'undefined') {
       if (typeof console !== 'undefined' && console.warn) {
@@ -80,13 +84,31 @@ class SeqSink {
         }
       }
     }
+
+    if (this.levelSwitch !== null) {
+      this.refreshLevelSwitchTimeoutId = setTimeout(() => this.sendToServer([]), this.refreshLevelSwitchTimeoutInterval);
+    }
   }
 
   toString() {
     return 'SeqSink';
   }
 
-  emit = (events, done) => {
+  emit(events, done) {
+    var filteredEvents = this.levelSwitch
+      ? events.filter(e => this.levelSwitch.isEnabled(e.level))
+      : events;
+
+    if (!filteredEvents.length) {
+      return done 
+        ? Promise.resolve().then(() => done(null))
+        : Promise.resolve();
+    }
+
+    return this.sendToServer(filteredEvents, done);
+  }
+
+  sendToServer(events, done) {
     const seqEvents = this.compact ? events.reduce((s, e) => {
       const mappedEvent = {
         '@l': mapLogLevel(e.level),
@@ -122,9 +144,50 @@ class SeqSink {
     }
 
     const promise = postToSeq(this.url, this.apiKey, this.compact, body, storageKey, done);
+
+    var responsePromise = promise
+      .then(r => r.json())
+      .then(json => this.updateLogLevel(json));
+
     return storageKey
-      ? promise.then(() => localStorage.removeItem(storageKey))
-      : promise;
+      ? responsePromise.then(() => localStorage.removeItem(storageKey))
+      : responsePromise;
+  }
+
+  updateLogLevel(response) {
+    if (!this.levelSwitch) return;
+
+    if (this.refreshLevelSwitchTimeoutId) {
+      clearTimeout(this.refreshLevelSwitchTimeoutId);
+      this.refreshLevelSwitchTimeoutId = setTimeout(() => this.sendToServer([]), this.refreshLevelSwitchTimeoutInterval);
+    }
+
+    if (response && response.MinimumLevelAccepted) {
+      switch (response.MinimumLevelAccepted) {
+        case 'Fatal':
+          this.levelSwitch.fatal();
+          break;
+        case 'Error':
+          this.levelSwitch.error();
+          break;
+        case 'Warning':
+          this.levelSwitch.warning();
+          break;
+        case 'Information':
+          this.levelSwitch.information();
+          break;
+        case 'Debug':
+          this.levelSwitch.debug();
+          break;
+        case 'Verbose':
+          this.levelSwitch.verbose();
+          break;
+      }
+    }
+  }
+
+  flush() {
+    return Promise.resolve();
   }
 }
 
