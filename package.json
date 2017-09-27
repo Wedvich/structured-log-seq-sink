@@ -1,6 +1,6 @@
 {
   "name": "structured-log-seq-sink",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "A structured-log plugin that writes log events to Seq.",
   "main": "dist/structured-log-seq-sink.js",
   "jsnext:main": "dist/structured-log-seq-sink.es6.js",
@@ -31,6 +31,6 @@
     "sinon": "^1.17.7"
   },
   "peerDependencies": {
-    "structured-log": "^0.1.0 || ^0.0.18"
+    "structured-log": "^0.2.0" || "^0.1.0 || ^0.0.18"
   }
 }
