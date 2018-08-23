@@ -1,4 +1,4 @@
-function postToSeq(url, apiKey, compact, body, storageKey, done) {
+function postToSeq(url, apiKey, compact, body, done) {
   const apiKeyParameter = apiKey ? `?apiKey=${apiKey}` : '';
   const promise = fetch(`${url}/api/events/raw${apiKeyParameter}`, {
     headers: {
@@ -34,8 +34,13 @@ function mapLogLevel(logLevel) {
   return 'Information';
 }
 
-class SeqSink {
+function logSuppressedError(reason) {
+  // if (typeof console !== 'undefined' && console.warn) {
+  //   console.warn('Suppressed error when logging to Seq: ' + reason);
+  // }
+}
 
+class SeqSink {
   url = null;
   apiKey = null;
   durable = false;
@@ -43,6 +48,7 @@ class SeqSink {
   levelSwitch = null;
   refreshLevelSwitchTimeoutId = null;
   refreshLevelSwitchTimeoutInterval = 2*60*1000;
+  suppressErrors = true;
 
   constructor(options) {
     if (!options) {
@@ -55,6 +61,7 @@ class SeqSink {
     this.url = options.url.replace(/\/$/, '');
     this.apiKey = options.apiKey;
     this.levelSwitch = options.levelSwitch || null;
+    this.suppressErrors = options.suppressErrors !== false;
 
     if (options.durable && typeof localStorage === 'undefined') {
       if (typeof console !== 'undefined' && console.warn) {
@@ -76,12 +83,9 @@ class SeqSink {
         }
 
         const body = localStorage.getItem(storageKey);
-        requests[storageKey] = postToSeq(this.url, this.apiKey, this.compact, body);
-      }
-      for (const k in requests) {
-        if (requests.hasOwnProperty(k)) {
-          requests[k].then(() => localStorage.removeItem(k));
-        }
+        requests[storageKey] = postToSeq(this.url, this.apiKey, this.compact, body)
+          .catch(reason => this.suppressErrors ? logSuppressedError(reason) : Promise.reject(reason))
+          .then(() => localStorage.removeItem(k));
       }
     }
 
@@ -143,15 +147,16 @@ class SeqSink {
       localStorage.setItem(storageKey, body);
     }
 
-    const promise = postToSeq(this.url, this.apiKey, this.compact, body, storageKey, done);
-
-    var responsePromise = promise
-      .then(r => r.json())
-      .then(json => this.updateLogLevel(json));
-
-    return storageKey
-      ? responsePromise.then(() => localStorage.removeItem(storageKey))
-      : responsePromise;
+    return postToSeq(this.url, this.apiKey, this.compact, body, done)
+      .catch(reason => this.suppressErrors ? logSuppressedError(reason) : Promise.reject(reason))
+      .then(response => response && response.json()
+          .then(json => this.updateLogLevel(json))
+          .then(() => {
+            if (storageKey) {
+              localStorage.removeItem(storageKey);
+            }
+          })
+      );
   }
 
   updateLogLevel(response) {

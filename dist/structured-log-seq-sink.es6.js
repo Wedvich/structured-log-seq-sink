@@ -4,7 +4,7 @@ var _createClass = function () { function defineProperties(target, props) { for 
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
 
-function postToSeq(url, apiKey, compact, body, storageKey, done) {
+function postToSeq(url, apiKey, compact, body, done) {
   var apiKeyParameter = apiKey ? '?apiKey=' + apiKey : '';
   var promise = fetch(url + '/api/events/raw' + apiKeyParameter, {
     headers: {
@@ -42,6 +42,12 @@ function mapLogLevel(logLevel) {
   return 'Information';
 }
 
+function logSuppressedError(reason) {
+  // if (typeof console !== 'undefined' && console.warn) {
+  //   console.warn('Suppressed error when logging to Seq: ' + reason);
+  // }
+}
+
 var SeqSink = function () {
   function SeqSink(options) {
     var _this = this;
@@ -55,6 +61,7 @@ var SeqSink = function () {
     this.levelSwitch = null;
     this.refreshLevelSwitchTimeoutId = null;
     this.refreshLevelSwitchTimeoutInterval = 2 * 60 * 1000;
+    this.suppressErrors = true;
 
     if (!options) {
       throw new Error('\'options\' parameter is required.');
@@ -66,6 +73,7 @@ var SeqSink = function () {
     this.url = options.url.replace(/\/$/, '');
     this.apiKey = options.apiKey;
     this.levelSwitch = options.levelSwitch || null;
+    this.suppressErrors = options.suppressErrors !== false;
 
     if (options.durable && typeof localStorage === 'undefined') {
       if (typeof console !== 'undefined' && console.warn) {
@@ -87,19 +95,11 @@ var SeqSink = function () {
         }
 
         var body = localStorage.getItem(storageKey);
-        requests[storageKey] = postToSeq(this.url, this.apiKey, this.compact, body);
-      }
-
-      var _loop = function _loop(k) {
-        if (requests.hasOwnProperty(k)) {
-          requests[k].then(function () {
-            return localStorage.removeItem(k);
-          });
-        }
-      };
-
-      for (var k in requests) {
-        _loop(k);
+        requests[storageKey] = postToSeq(this.url, this.apiKey, this.compact, body).catch(function (reason) {
+          return _this.suppressErrors ? logSuppressedError(reason) : Promise.reject(reason);
+        }).then(function () {
+          return localStorage.removeItem(k);
+        });
       }
     }
 
@@ -170,17 +170,17 @@ var SeqSink = function () {
         localStorage.setItem(storageKey, body);
       }
 
-      var promise = postToSeq(this.url, this.apiKey, this.compact, body, storageKey, done);
-
-      var responsePromise = promise.then(function (r) {
-        return r.json();
-      }).then(function (json) {
-        return _this3.updateLogLevel(json);
+      return postToSeq(this.url, this.apiKey, this.compact, body, done).catch(function (reason) {
+        return _this3.suppressErrors ? logSuppressedError(reason) : Promise.reject(reason);
+      }).then(function (response) {
+        return response && response.json().then(function (json) {
+          return _this3.updateLogLevel(json);
+        }).then(function () {
+          if (storageKey) {
+            localStorage.removeItem(storageKey);
+          }
+        });
       });
-
-      return storageKey ? responsePromise.then(function () {
-        return localStorage.removeItem(storageKey);
-      }) : responsePromise;
     }
   }, {
     key: 'updateLogLevel',
