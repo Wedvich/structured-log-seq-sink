@@ -49,9 +49,9 @@
   }
 
   function logSuppressedError(reason) {
-    // if (typeof console !== 'undefined' && console.warn) {
-    //   console.warn('Suppressed error when logging to Seq: ' + reason);
-    // }
+    if (typeof console !== 'undefined' && console.warn) {
+      console.warn('Suppressed error when logging to Seq: ' + reason);
+    }
   }
 
   var SeqSink = function () {
@@ -101,10 +101,10 @@
           }
 
           var body = localStorage.getItem(storageKey);
-          requests[storageKey] = postToSeq(this.url, this.apiKey, this.compact, body).catch(function (reason) {
-            return _this.suppressErrors ? logSuppressedError(reason) : Promise.reject(reason);
-          }).then(function () {
+          requests[storageKey] = postToSeq(this.url, this.apiKey, this.compact, body).then(function () {
             return localStorage.removeItem(k);
+          }).catch(function (reason) {
+            return _this.suppressErrors ? logSuppressedError(reason) : Promise.reject(reason);
           });
         }
       }
@@ -176,16 +176,14 @@
           localStorage.setItem(storageKey, body);
         }
 
-        return postToSeq(this.url, this.apiKey, this.compact, body, done).catch(function (reason) {
+        return postToSeq(this.url, this.apiKey, this.compact, body, done).then(function (response) {
+          return response.json();
+        }).then(function (json) {
+          return _this3.updateLogLevel(json);
+        }).then(function () {
+          if (storageKey) localStorage.removeItem(storageKey);
+        }).catch(function (reason) {
           return _this3.suppressErrors ? logSuppressedError(reason) : Promise.reject(reason);
-        }).then(function (response) {
-          return response && response.json().then(function (json) {
-            return _this3.updateLogLevel(json);
-          }).then(function () {
-            if (storageKey) {
-              localStorage.removeItem(storageKey);
-            }
-          });
         });
       }
     }, {

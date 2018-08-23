@@ -35,9 +35,9 @@ function mapLogLevel(logLevel) {
 }
 
 function logSuppressedError(reason) {
-  // if (typeof console !== 'undefined' && console.warn) {
-  //   console.warn('Suppressed error when logging to Seq: ' + reason);
-  // }
+  if (typeof console !== 'undefined' && console.warn) {
+    console.warn('Suppressed error when logging to Seq: ' + reason);
+  }
 }
 
 class SeqSink {
@@ -84,8 +84,8 @@ class SeqSink {
 
         const body = localStorage.getItem(storageKey);
         requests[storageKey] = postToSeq(this.url, this.apiKey, this.compact, body)
-          .catch(reason => this.suppressErrors ? logSuppressedError(reason) : Promise.reject(reason))
-          .then(() => localStorage.removeItem(k));
+          .then(() => localStorage.removeItem(k))
+          .catch(reason => this.suppressErrors ? logSuppressedError(reason) : Promise.reject(reason));
       }
     }
 
@@ -148,15 +148,10 @@ class SeqSink {
     }
 
     return postToSeq(this.url, this.apiKey, this.compact, body, done)
-      .catch(reason => this.suppressErrors ? logSuppressedError(reason) : Promise.reject(reason))
-      .then(response => response && response.json()
-          .then(json => this.updateLogLevel(json))
-          .then(() => {
-            if (storageKey) {
-              localStorage.removeItem(storageKey);
-            }
-          })
-      );
+      .then(response => response.json())
+      .then(json => this.updateLogLevel(json))
+      .then(() => { if (storageKey) localStorage.removeItem(storageKey) })
+      .catch(reason => this.suppressErrors ? logSuppressedError(reason) : Promise.reject(reason));
   }
 
   updateLogLevel(response) {
