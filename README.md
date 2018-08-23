@@ -56,7 +56,7 @@ seq sink (by passing it in the `options` array).
 
 ### Building and testing
 
-To build the modules yourself, check out the code, then install dependencies and run the `build` script:
+To build the modules yourself, you need Node 8 or greater. Check out the code, then install dependencies and run the `build` script:
 
 ```
 npm i
