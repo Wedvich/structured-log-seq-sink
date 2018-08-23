@@ -30,6 +30,7 @@ var logger = structuredLog.configure()
 |`compact`|(optional) If true, events be serialized using [Serilog's compact format](https://github.com/serilog/serilog-formatting-compact)|
 |`durable`|(optional) If true, events will be buffered in local storage if available|
 |`levelSwitch`|(optional) `DynamicLevelSwitch` which the Seq log level will control and use |
+|`suppressErrors`|(optional) If true, errors in the pipeline will be suppressed and logged to the console instead (defaults to true)|
 |`url`|(required) URL to the Seq server|
 
 #### Dynamic Level Control
